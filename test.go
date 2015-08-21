@@ -4,7 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
+	"time"
 )
+
+type Wikiwordcontent struct {
+	Word        string
+	Content     []byte
+	Compression bool
+	Encryption  bool
+
+	Created  float64
+	Modified float64
+	Visited  float64
+
+	Readonly bool
+	//	Metadataprocessed     int
+	//	Presentationdatablock string
+}
+
+//http://go-database-sql.org/retrieving.html
 
 func main() {
 	db, err := sql.Open("sqlite3", "wiki.db")
@@ -19,52 +38,51 @@ func main() {
 	defer db.Close()
 
 	// Execute the query
-	rows, err := db.Query("SELECT * FROM wikiwordcontent LIMIT 2")
+	rows, err := db.Query("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent LIMIT 1")
 	if err != nil {
 		panic(err.Error()) // proper error handling instead of panic in your app
 	}
 
-	// Get column names
-	columns, err := rows.Columns()
 	if err != nil {
-		panic(err.Error()) // proper error handling instead of panic in your app
+		log.Fatal(err)
 	}
 
-	// Make a slice for the values
-	values := make([]sql.RawBytes, len(columns))
+	defer rows.Close()
 
-	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
-	// references into such a slice
-	// See http://code.google.com/p/go-wiki/wiki/InterfaceSlice for details
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
+	word := new(Wikiwordcontent)
 
-	// Fetch rows
 	for rows.Next() {
-		// get RawBytes from data
-		err = rows.Scan(scanArgs...)
+		err := rows.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
 		if err != nil {
-			panic(err.Error()) // proper error handling instead of panic in your app
+			log.Fatal(err)
 		}
 
-		// Now do something with the data.
-		// Here we just print each column as a string.
-		var value string
-		for i, col := range values {
-			// Here we can check if the value is nil (NULL value)
-			if col == nil {
-				value = "NULL"
-			} else {
-				value = string(col)
-			}
-			fmt.Println(columns[i], ": ", value)
-		}
-		fmt.Println("-----------------------------------")
+		fmt.Println("---word.Word---")
+		fmt.Println(word.Word)
+		fmt.Println("---word.Content---")
+		fmt.Println(string(word.Content))
+		fmt.Println("---word.Compression---")
+		fmt.Println(word.Compression)
+		fmt.Println("---word.Encryption---")
+		fmt.Println(word.Encryption)
+
+		fmt.Println("---word.Created---")
+		fmt.Println(time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
+
+		fmt.Println("---word.Modified---")
+		fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
+
+		fmt.Println("---word.Visited---")
+		fmt.Println(word.Visited)
+
+		fmt.Println("---word.Readonly---")
+		fmt.Println(word.Readonly)
+
 	}
-	if err = rows.Err(); err != nil {
-		panic(err.Error()) // proper error handling instead of panic in your app
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 }
