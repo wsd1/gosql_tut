@@ -38,7 +38,7 @@ func main() {
 	defer db.Close()
 
 	// Execute the query
-	rows, err := db.Query("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent LIMIT 1")
+	rows, err := db.Query("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent LIMIT 2")
 	if err != nil {
 		panic(err.Error()) // proper error handling instead of panic in your app
 	}
@@ -96,9 +96,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	word.Word = "arm"
 	//single row query
-
-	row := db.QueryRow("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent WHERE word=?", "ExMemory")
+	row := db.QueryRow("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent WHERE word=?", word.Word)
 	err = row.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
 	if err != nil {
 		log.Fatal(err)
@@ -120,7 +120,42 @@ func main() {
 	fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
 
 	fmt.Println("---word.Visited---")
-	fmt.Println(word.Visited)
+	fmt.Println(time.Unix(int64(word.Visited), 0).Format("2006-01-02 03:04:05 PM"))
+
+	fmt.Println("---word.Readonly---")
+	fmt.Println(word.Readonly)
+
+	fmt.Println("------ modify ------")
+
+	word.Visited = float64(time.Now().Unix())
+
+	sql := "UPDATE wikiwordcontent SET content = ?,compression = ?,encryption = ?,created = ? ,modified = ? ,visited = ? ,readonly = ? WHERE word = ?"
+	db.Exec(sql, word.Content, word.Compression, word.Encryption, word.Created, word.Modified, word.Visited, word.Readonly, word.Word)
+
+	//single row query
+	row = db.QueryRow("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent WHERE word=?", word.Word)
+	err = row.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("---word.Word---")
+	fmt.Println(word.Word)
+	fmt.Println("---word.Content---")
+	fmt.Println(string(word.Content))
+	fmt.Println("---word.Compression---")
+	fmt.Println(word.Compression)
+	fmt.Println("---word.Encryption---")
+	fmt.Println(word.Encryption)
+
+	fmt.Println("---word.Created---")
+	fmt.Println(time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
+
+	fmt.Println("---word.Modified---")
+	fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
+
+	fmt.Println("---word.Visited---")
+	fmt.Println(time.Unix(int64(word.Visited), 0).Format("2006-01-02 03:04:05 PM"))
 
 	fmt.Println("---word.Readonly---")
 	fmt.Println(word.Readonly)
