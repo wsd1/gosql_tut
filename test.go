@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"time"
@@ -37,66 +38,59 @@ func main() {
 
 	defer db.Close()
 
-	// Execute the query
-	rows, err := db.Query("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent LIMIT 2")
-	if err != nil {
-		panic(err.Error()) // proper error handling instead of panic in your app
-	}
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer rows.Close()
-
-	/*
-	   db.Query()表示向数据库发送一个query，defer rows.Close()非常重要，遍历rows使用rows.Next()，
-	   把遍历到的数据存入变量使用rows.Scan(), 遍历完成后检查error。有几点需要注意：
-
-	   检查遍历是否有error
-	   结果集(rows)未关闭前，底层的连接处于繁忙状态。当遍历读到最后一条记录时，会发生一个内部EOF错误，自动
-	   调用rows.Close()，但是如果提前退出循环，rows不会关闭，连接不会回到连接池中，连接也不会关闭。所以手
-	   动关闭非常重要。rows.Close()可以多次调用，是无害操作。
-
-	*/
-
 	word := new(Wikiwordcontent)
 
-	for rows.Next() {
-		err := rows.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
-		if err != nil {
-			log.Fatal(err)
+	word.Word = "ooxx"
+
+	fmt.Println("------ ------ delete ------ ------")
+
+	{
+
+		sql_del := "DELETE FROM wikiwordcontent WHERE word = ?"
+		res_del, err_del := db.Exec(sql_del, word.Word)
+		if err_del != nil {
+			log.Fatal(err_del)
 		}
 
-		fmt.Println("---word.Word---")
-		fmt.Println(word.Word)
-		fmt.Println("---word.Content---")
-		fmt.Println(string(word.Content))
-		fmt.Println("---word.Compression---")
-		fmt.Println(word.Compression)
-		fmt.Println("---word.Encryption---")
-		fmt.Println(word.Encryption)
-
-		fmt.Println("---word.Created---")
-		fmt.Println(time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
-
-		fmt.Println("---word.Modified---")
-		fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
-
-		fmt.Println("---word.Visited---")
-		fmt.Println(word.Visited)
-
-		fmt.Println("---word.Readonly---")
-		fmt.Println(word.Readonly)
+		lastId, err_lastInsertId := res_del.LastInsertId()
+		if err_lastInsertId != nil {
+			log.Fatal(err_lastInsertId)
+		}
+		rowCnt, err_affected := res_del.RowsAffected()
+		if err_affected != nil {
+			log.Fatal(err_affected)
+		}
+		fmt.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
 
 	}
 
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
+	fmt.Println("------ ------ inserting ------ ------")
+
+	word.Content = []byte("Go String与Byte切片之间的转换")
+	word.Compression = false
+	word.Encryption = false
+	word.Created = float64(time.Now().Unix())
+	word.Modified = float64(time.Now().Unix())
+	word.Visited = float64(time.Now().Unix())
+	word.Readonly = false
+	sql_insert := "INSERT INTO wikiwordcontent(word,content,compression,encryption,created,modified,visited,readonly) "
+	sql_insert += "VALUES (?,?,?,?,?,?,?,?)"
+	res_insert, err_insert := db.Exec(sql_insert, word.Word, word.Content, word.Compression, word.Encryption, word.Created, word.Modified, word.Visited, word.Readonly)
+	if err_insert != nil {
+		log.Fatal(err_insert)
 	}
 
-	word.Word = "arm"
+	lastId, err_lastInsertId := res_insert.LastInsertId()
+	if err_lastInsertId != nil {
+		log.Fatal(err_lastInsertId)
+	}
+	rowCnt, err_affected := res_insert.RowsAffected()
+	if err_affected != nil {
+		log.Fatal(err_affected)
+	}
+	fmt.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
+
+	fmt.Println("------ ------ Query ------ ------")
 	//single row query
 	row := db.QueryRow("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent WHERE word=?", word.Word)
 	err = row.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
@@ -104,60 +98,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("---word.Word---")
-	fmt.Println(word.Word)
-	fmt.Println("---word.Content---")
-	fmt.Println(string(word.Content))
-	fmt.Println("---word.Compression---")
-	fmt.Println(word.Compression)
-	fmt.Println("---word.Encryption---")
-	fmt.Println(word.Encryption)
+	spew.Dump(word)
 
-	fmt.Println("---word.Created---")
-	fmt.Println(time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
+	fmt.Println("Content:%s", string(word.Content))
+	fmt.Println("Created:%s", time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
+	fmt.Println("Modified:%s", time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
+	fmt.Println("Visited:%s", time.Unix(int64(word.Visited), 0).Format("2006-01-02 03:04:05 PM"))
 
-	fmt.Println("---word.Modified---")
-	fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
+	fmt.Println("------ ------ delete ------ ------")
 
-	fmt.Println("---word.Visited---")
-	fmt.Println(time.Unix(int64(word.Visited), 0).Format("2006-01-02 03:04:05 PM"))
+	{
 
-	fmt.Println("---word.Readonly---")
-	fmt.Println(word.Readonly)
+		sql_del := "DELETE FROM wikiwordcontent WHERE word = ?"
+		res_del, err_del := db.Exec(sql_del, word.Word)
+		if err_del != nil {
+			log.Fatal(err_del)
+		}
 
-	fmt.Println("------ modify ------")
+		lastId, err_lastInsertId := res_del.LastInsertId()
+		if err_lastInsertId != nil {
+			log.Fatal(err_lastInsertId)
+		}
+		rowCnt, err_affected := res_del.RowsAffected()
+		if err_affected != nil {
+			log.Fatal(err_affected)
+		}
+		fmt.Printf("ID = %d, affected = %d\n", lastId, rowCnt)
 
-	word.Visited = float64(time.Now().Unix())
-
-	sql := "UPDATE wikiwordcontent SET content = ?,compression = ?,encryption = ?,created = ? ,modified = ? ,visited = ? ,readonly = ? WHERE word = ?"
-	db.Exec(sql, word.Content, word.Compression, word.Encryption, word.Created, word.Modified, word.Visited, word.Readonly, word.Word)
-
-	//single row query
-	row = db.QueryRow("SELECT word,content,compression,encryption,created,modified,visited,readonly FROM wikiwordcontent WHERE word=?", word.Word)
-	err = row.Scan(&word.Word, &word.Content, &word.Compression, &word.Encryption, &word.Created, &word.Modified, &word.Visited, &word.Readonly)
-	if err != nil {
-		log.Fatal(err)
 	}
-
-	fmt.Println("---word.Word---")
-	fmt.Println(word.Word)
-	fmt.Println("---word.Content---")
-	fmt.Println(string(word.Content))
-	fmt.Println("---word.Compression---")
-	fmt.Println(word.Compression)
-	fmt.Println("---word.Encryption---")
-	fmt.Println(word.Encryption)
-
-	fmt.Println("---word.Created---")
-	fmt.Println(time.Unix(int64(word.Created), 0).Format("2006-01-02 03:04:05 PM"))
-
-	fmt.Println("---word.Modified---")
-	fmt.Println(time.Unix(int64(word.Modified), 0).Format("2006-01-02 03:04:05 PM"))
-
-	fmt.Println("---word.Visited---")
-	fmt.Println(time.Unix(int64(word.Visited), 0).Format("2006-01-02 03:04:05 PM"))
-
-	fmt.Println("---word.Readonly---")
-	fmt.Println(word.Readonly)
 
 }
